@@ -37,8 +37,9 @@ describe("Registrator contract", function () {
     expect(await registrator.tokenContract()).to.equal(tokenAddress)
   })
 
-  it('Allows locking tokens')
-  it('Allows changing threshold')
-  it('Allows changing locking rate')
+  it('Lock tokens for a pre-configured amount of blocks')
+  it('Allows setting non-zero lock lengths')
+  it('Block unlocking tokens before unlock height')
+  it('Allows unlocking tokens starting at unlock height')
 
 });

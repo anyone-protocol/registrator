@@ -12,6 +12,11 @@ Built on top of the [OpenZeppelin framework](https://openzeppelin.com/), develop
 $ npm i
 ```
 
+## Start a local HardHat node
+```bash
+$ npx hardhat node
+```
+
 ## Test
 ```bash
 $ npx hardhat test --network localhost
