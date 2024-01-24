@@ -19,26 +19,28 @@ contract Registrator is Initializable, PausableUpgradeable, AccessControlUpgrade
 
     IERC20 public tokenContract;
 
-    struct Lock {
-        uint256 amount;
-        uint256 unlockAt;
+    struct LockData {
+        uint256[] amount;
+        uint256[] unlockAt;
     }
 
-    struct Data {
-        uint256 penalty;
-        Lock[] locks;
-    }
+    mapping(address => LockData) locks;
+    mapping(address => uint256) public penalties;
 
-    mapping(address => Data) public data;
+    function getLock(address _address) public view returns (LockData memory) {
+        return locks[_address];
+    }
 
     function lock(uint256 _amount) external whenNotPaused {
         require(tokenContract.transferFrom(msg.sender, address(this), _amount));
-        data[msg.sender].locks.push(Lock(_amount, block.number + lockBlocks));
+        locks[msg.sender].amount.push(_amount);
+        locks[msg.sender].unlockAt.push(block.number + lockBlocks);
     }
 
     function lockFor(address _address, uint256 _amount) external whenNotPaused {
         require(tokenContract.transferFrom(msg.sender, address(this), _amount));
-        data[_address].locks.push(Lock(_amount, block.number + lockBlocks));
+        locks[_address].amount.push(_amount);
+        locks[_address].unlockAt.push(block.number + lockBlocks);
     }
 
     function unlock(uint256 _upto) external whenNotPaused {
@@ -47,17 +49,17 @@ contract Registrator is Initializable, PausableUpgradeable, AccessControlUpgrade
         uint256 requested = _upto;
         uint256 unlocked = 0;
         uint consumedSize = 0;
-        uint[] memory consumed = new uint[](data[msg.sender].locks.length);
-        for (uint i = 0; i < data[msg.sender].locks.length; i++) {
-            if (data[msg.sender].locks[i].unlockAt < block.number) {
+        uint[] memory consumed = new uint[](locks[msg.sender].amount.length);
+        for (uint i = 0; i < locks[msg.sender].amount.length; i++) {
+            if (locks[msg.sender].unlockAt[i] < block.number) {
                 if (requested > 0) {
-                    if (data[msg.sender].locks[i].amount > requested) {
-                        data[msg.sender].locks[i].amount -= requested;
+                    if (locks[msg.sender].amount[i] > requested) {
+                        locks[msg.sender].amount[i] -= requested;
                         unlocked += requested;
                         requested = 0;
                     } else {
-                        requested -= data[msg.sender].locks[i].amount;
-                        unlocked += data[msg.sender].locks[i].amount;
+                        requested -= locks[msg.sender].amount[i];
+                        unlocked += locks[msg.sender].amount[i];
                         consumed[consumedSize] = i;
                         consumedSize++;
                     }
@@ -65,19 +67,28 @@ contract Registrator is Initializable, PausableUpgradeable, AccessControlUpgrade
             }
         }
 
+        require(unlocked > 0, "No unlockables found");
+        require(tokenContract.balanceOf(address(this)) >= unlocked, "Insufficient contract token balance");
+        require(tokenContract.transfer(msg.sender, unlocked), "Token transfer failed");
+
+        require(locks[msg.sender].amount.length == locks[msg.sender].unlockAt.length, "Data consistency failure");
         uint removed = 0;
         for (uint i = 0; i < consumedSize; i++) {
             uint adjustedIndex = consumed[i] - removed;
-            require(adjustedIndex < data[msg.sender].locks.length, "Index out of bounds");
-            for (uint j = adjustedIndex; j < data[msg.sender].locks.length - 1; j++) {
-                data[msg.sender].locks[j] = data[msg.sender].locks[j + 1];
+            require(adjustedIndex < locks[msg.sender].amount.length, "Index out of bounds");
+            require(adjustedIndex < locks[msg.sender].unlockAt.length, "Index out of bounds");
+            for (uint j = adjustedIndex; j < locks[msg.sender].amount.length - 1; j++) {
+                locks[msg.sender].amount[j] = locks[msg.sender].amount[j + 1];
+                locks[msg.sender].unlockAt[j] = locks[msg.sender].amount[j + 1];
             }
-            data[msg.sender].locks.pop();
+            locks[msg.sender].amount.pop();
+            locks[msg.sender].unlockAt.pop();
             removed++;
         }
 
-        require(tokenContract.balanceOf(address(this)) >= unlocked, "Insufficient contract token balance");
-        require(tokenContract.transfer(msg.sender, unlocked), "Token transfer failed");
+        if (locks[msg.sender].amount.length == 0) {
+            delete locks[msg.sender];
+        }
     }
 
     function setPenalty(address _account, uint256 _value)
@@ -85,7 +96,7 @@ contract Registrator is Initializable, PausableUpgradeable, AccessControlUpgrade
         whenNotPaused 
         onlyRole(OPERATOR_ROLE)
     {
-        data[_account].penalty = _value;
+        penalties[_account] = _value;
     }
 
 
@@ -94,7 +105,7 @@ contract Registrator is Initializable, PausableUpgradeable, AccessControlUpgrade
         whenNotPaused 
         onlyRole(OPERATOR_ROLE)
     {
-        require(_value > 0);
+        require(_value > 0, "Lock duration has to be non-zero");
         lockBlocks = _value;
     }
 
@@ -105,11 +116,12 @@ contract Registrator is Initializable, PausableUpgradeable, AccessControlUpgrade
 
     function initialize(
         address _tokenAddress, 
-        address payable _operator
+        address payable _operator,
+        uint256 _lockBlocks
     ) initializer public {
         tokenContract = IERC20(_tokenAddress);
         
-        lockBlocks = 180 * 24 * 60 * 5; // 12sec avg per block over 180 days
+        lockBlocks = _lockBlocks;
 
         __Pausable_init();
         __AccessControl_init();
