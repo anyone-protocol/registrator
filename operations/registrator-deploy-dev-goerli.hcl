@@ -28,7 +28,6 @@ job "registrator-deploy-dev-goerli" {
                 CONSUL_TOKEN="{{.Data.data.CONSUL_TOKEN}}"
                 JSON_RPC="{{.Data.data.JSON_RPC}}"
                 REGISTRATOR_OPERATOR_ADDRESS="{{.Data.data.REGISTRATOR_OPERATOR_ADDRESS}}"
-                REGISTRATOR_RECEIVER_ADDRESS="{{.Data.data.REGISTRATOR_RECEIVER_ADDRESS}}"
             {{end}}
             EOH
             destination = "secrets/file.env"

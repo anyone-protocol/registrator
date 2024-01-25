@@ -33,17 +33,17 @@ async function main() {
     : owner
   
   const operatorAddress = process.env.REGISTRATOR_OPERATOR_ADDRESS || '0x90F79bf6EB2c4f870365E785982E1f101E93b906' // Hardhat #3
-  const receiverAddress = process.env.REGISTRATOR_RECEIVER_ADDRESS || '0x15d34AAf54267DB7D7c367839AAf71A00a2C6A65' // Hardhat #4
 
   console.log(`Deploying registrator with operator ${operatorAddress}...`)
-  console.log(`Deploying registrator with receiver ${receiverAddress}...`)
   console.log(`Deploying registrator with deployer ${deployer.address}...`)
   
   const Contract = await ethers.getContractFactory('Registrator', deployer)
+
+  const defaultBlockLock = 5n * 60n * 24n * 180n // 12s per block, 180 days
   
   const instance = await upgrades.deployProxy(
     Contract,
-    [ atorContractAddress, operatorAddress, receiverAddress ]
+    [ atorContractAddress, operatorAddress, defaultBlockLock ]
   )
   await instance.waitForDeployment()
   const proxyContractAddress = await instance.getAddress()
