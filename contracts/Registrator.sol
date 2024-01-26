@@ -16,6 +16,7 @@ contract Registrator is Initializable, PausableUpgradeable, AccessControlUpgrade
     bytes32 public constant OPERATOR_ROLE = keccak256("OPERATOR_ROLE");
 
     uint256 public lockBlocks;
+    uint256 public currentLockSize;
 
     IERC20 public tokenContract;
 
@@ -27,20 +28,24 @@ contract Registrator is Initializable, PausableUpgradeable, AccessControlUpgrade
     mapping(address => LockData) locks;
     mapping(address => uint256) public penalties;
 
+    event LockRegistered(address indexed _account);
+
     function getLock(address _address) public view returns (LockData memory) {
         return locks[_address];
     }
 
-    function lock(uint256 _amount) external whenNotPaused {
-        require(tokenContract.transferFrom(msg.sender, address(this), _amount));
-        locks[msg.sender].amount.push(_amount);
+    function lock() external whenNotPaused {
+        require(tokenContract.transferFrom(msg.sender, address(this), currentLockSize));
+        locks[msg.sender].amount.push(currentLockSize);
         locks[msg.sender].unlockAt.push(block.number + lockBlocks);
+        emit LockRegistered(msg.sender);
     }
 
-    function lockFor(address _address, uint256 _amount) external whenNotPaused {
-        require(tokenContract.transferFrom(msg.sender, address(this), _amount));
-        locks[_address].amount.push(_amount);
+    function lockFor(address _address) external whenNotPaused {
+        require(tokenContract.transferFrom(msg.sender, address(this), currentLockSize));
+        locks[_address].amount.push(currentLockSize);
         locks[_address].unlockAt.push(block.number + lockBlocks);
+        emit LockRegistered(_address);
     }
 
     function unlock(uint256 _upto) external whenNotPaused {
@@ -99,6 +104,15 @@ contract Registrator is Initializable, PausableUpgradeable, AccessControlUpgrade
         penalties[_account] = _value;
     }
 
+    function setLockSize(uint256 _value)
+        external 
+        whenNotPaused 
+        onlyRole(OPERATOR_ROLE)
+    {
+        require(_value > 0, "Lock size has to be non-zero");
+        currentLockSize = _value;
+    }
+
 
     function setLockBlocks(uint256 _value) 
         external 
@@ -117,11 +131,13 @@ contract Registrator is Initializable, PausableUpgradeable, AccessControlUpgrade
     function initialize(
         address _tokenAddress, 
         address payable _operator,
-        uint256 _lockBlocks
+        uint256 _lockBlocks,
+        uint256 _lockSize
     ) initializer public {
         tokenContract = IERC20(_tokenAddress);
         
         lockBlocks = _lockBlocks;
+        currentLockSize = _lockSize;
 
         __Pausable_init();
         __AccessControl_init();

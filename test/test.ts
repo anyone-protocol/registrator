@@ -5,6 +5,7 @@ import { loadFixture } from '@nomicfoundation/hardhat-network-helpers'
 describe("Registrator contract", function () {
 
   const defaultLockBlocks = 10n;
+  const defaultLockSize = 100n * BigInt(1e18);
 
   async function deploy() {
     const Token = await ethers.getContractFactory('Token')
@@ -16,7 +17,7 @@ describe("Registrator contract", function () {
 
     const registrator = await upgrades.deployProxy(
       Registrator,
-      [ tokenAddress, operator.address, defaultLockBlocks ]
+      [ tokenAddress, operator.address, defaultLockBlocks, defaultLockSize ]
     )
     await registrator.waitForDeployment()
     const registratorAddress = await registrator.getAddress()
@@ -50,7 +51,7 @@ describe("Registrator contract", function () {
     // @ts-ignore
     await token.connect(tester).approve(registratorAddress, lockAmount)
     // @ts-ignore
-    const result = await registrator.connect(tester).lock(lockAmount)
+    const result = await registrator.connect(tester).lock()
     
     expect(await token.balanceOf(registratorAddress)).to.equal(lockAmount)
     expect(await token.balanceOf(tester.address)).to.equal(lockAmount)
@@ -63,14 +64,14 @@ describe("Registrator contract", function () {
     const { admin, registrator, tester, token, registratorAddress, receiver } = 
       await loadFixture(deploy)
 
-    const lockAmount = 100n * BigInt(1e18)
+    const lockAmount = defaultLockSize
 
     // @ts-ignore
     await token.connect(admin).transfer(tester.address, 2n * lockAmount)
     // @ts-ignore
     await token.connect(tester).approve(registratorAddress, lockAmount)
     // @ts-ignore
-    const result = await registrator.connect(tester).lockFor(receiver.address, lockAmount)
+    const result = await registrator.connect(tester).lockFor(receiver.address)
     
     expect(await token.balanceOf(registratorAddress)).to.equal(lockAmount)
     expect(await token.balanceOf(tester.address)).to.equal(lockAmount)
@@ -90,18 +91,29 @@ describe("Registrator contract", function () {
     expect(await registrator.lockBlocks()).to.equal(defaultLockBlocks * 2n)
   })
 
+  it('Allows setting only non-zero lock size', async () => {
+    const { registrator, operator } = await loadFixture(deploy)
+
+    expect(await registrator.currentLockSize()).to.equal(defaultLockSize)
+    // @ts-ignore
+    await expect(registrator.connect(operator).setLockSize(0)).to.be.revertedWith(`Lock size has to be non-zero`)
+    // @ts-ignore
+    await registrator.connect(operator).setLockSize(defaultLockSize * 2n)
+    expect(await registrator.currentLockSize()).to.equal(defaultLockSize * 2n)
+  })
+
   it('Block unlocking tokens before unlock height', async () => {
     const { admin, registrator, tester, token, registratorAddress } = 
       await loadFixture(deploy)
 
-    const lockAmount = 100n * BigInt(1e18)
+    const lockAmount = defaultLockSize
 
     // @ts-ignore
     await token.connect(admin).transfer(tester.address, 2n * lockAmount)
     // @ts-ignore
     await token.connect(tester).approve(registratorAddress, lockAmount)
     // @ts-ignore
-    const result = await registrator.connect(tester).lock(lockAmount)
+    const result = await registrator.connect(tester).lock()
 
     const data = await registrator.getLock(tester.address)
     expect(data[0][0]).to.equal(lockAmount)
@@ -115,14 +127,14 @@ describe("Registrator contract", function () {
     const { admin, registrator, tester, token, registratorAddress } = 
       await loadFixture(deploy)
 
-    const lockAmount = 100n * BigInt(1e18)
+    const lockAmount = defaultLockSize
 
     // @ts-ignore
     await token.connect(admin).transfer(tester.address, lockAmount)
     // @ts-ignore
     await token.connect(tester).approve(registratorAddress, lockAmount)
     // @ts-ignore
-    const result = await registrator.connect(tester).lock(lockAmount)
+    const result = await registrator.connect(tester).lock()
     expect(await token.balanceOf(tester.address)).to.equal(0)
 
     for (let i = 0; i < defaultLockBlocks; i++) {
@@ -138,43 +150,39 @@ describe("Registrator contract", function () {
     const { admin, registrator, tester, token, registratorAddress, operator } = 
       await loadFixture(deploy)
 
-    const lockAmount1 = 1n * BigInt(1e18)
-    const lockAmount2 = 10n * BigInt(1e18)
-    const lockAmount3 = 100n * BigInt(1e18)
-    const lockAmount4 = 1000n * BigInt(1e18)
-    const lockAmount5 = 10000n * BigInt(1e18)
+    const lockAmount = defaultLockSize
 
     // @ts-ignore
-    await token.connect(admin).transfer(tester.address, lockAmount1 + lockAmount2 + lockAmount3 + lockAmount4 + lockAmount5)
+    await token.connect(admin).transfer(tester.address, lockAmount * 5n)
     
     // @ts-ignore
-    await token.connect(tester).approve(registratorAddress, lockAmount1)
+    await token.connect(tester).approve(registratorAddress, lockAmount)
     // @ts-ignore
-    await registrator.connect(tester).lock(lockAmount1)
+    await registrator.connect(tester).lock()
     // @ts-ignore
     await registrator.connect(operator).setLockBlocks(defaultLockBlocks * 2n)
     // @ts-ignore
-    await token.connect(tester).approve(registratorAddress, lockAmount2)
+    await token.connect(tester).approve(registratorAddress, lockAmount)
     // @ts-ignore
-    await registrator.connect(tester).lock(lockAmount2)
+    await registrator.connect(tester).lock()
     // @ts-ignore
     await registrator.connect(operator).setLockBlocks(defaultLockBlocks * 3n)
     // @ts-ignore
-    await token.connect(tester).approve(registratorAddress, lockAmount3)
+    await token.connect(tester).approve(registratorAddress, lockAmount)
     // @ts-ignore
-    await registrator.connect(tester).lock(lockAmount3)
+    await registrator.connect(tester).lock()
     // @ts-ignore
     await registrator.connect(operator).setLockBlocks(defaultLockBlocks * 4n)
     // @ts-ignore
-    await token.connect(tester).approve(registratorAddress, lockAmount4)
+    await token.connect(tester).approve(registratorAddress, lockAmount)
     // @ts-ignore
-    await registrator.connect(tester).lock(lockAmount4)
+    await registrator.connect(tester).lock()
     // @ts-ignore
     await registrator.connect(operator).setLockBlocks(defaultLockBlocks * 5n)
     // @ts-ignore
-    await token.connect(tester).approve(registratorAddress, lockAmount5)
+    await token.connect(tester).approve(registratorAddress, lockAmount)
     // @ts-ignore
-    await registrator.connect(tester).lock(lockAmount5)
+    await registrator.connect(tester).lock()
 
 
     for (let i = 0; i < defaultLockBlocks * 3n; i++) {
@@ -182,55 +190,53 @@ describe("Registrator contract", function () {
     }
     
     // @ts-ignore
-    await registrator.connect(tester).unlock(lockAmount5)
+    await registrator.connect(tester).unlock(lockAmount * 5n)
 
-    expect(await token.balanceOf(tester.address)).to.equal(lockAmount1 + lockAmount2 + lockAmount3)
+    expect(await token.balanceOf(tester.address)).to.equal(lockAmount * 3n)
     
     const data = await registrator.getLock(tester.address)
     
-    expect(data[0][0]).to.equal(lockAmount4)
+    expect(data[0][0]).to.equal(lockAmount)
   })
 
   it('Unlocks partial amount of tokens among multiple locks', async () => {
     const { admin, registrator, tester, token, registratorAddress, operator } = 
       await loadFixture(deploy)
 
-    const lockAmount1 = 1n * BigInt(1e18)
-    const lockAmount2 = 10n * BigInt(1e18)
-    const lockAmount3 = 100n * BigInt(1e18)
+    const lockAmount = defaultLockSize
 
     // @ts-ignore
-    await token.connect(admin).transfer(tester.address, lockAmount1 + lockAmount2 + lockAmount3)
+    await token.connect(admin).transfer(tester.address, lockAmount * 3n)
     
     // @ts-ignore
-    await token.connect(tester).approve(registratorAddress, lockAmount1)
+    await token.connect(tester).approve(registratorAddress, lockAmount)
     // @ts-ignore
-    await registrator.connect(tester).lock(lockAmount1)
+    await registrator.connect(tester).lock()
     // @ts-ignore
     await registrator.connect(operator).setLockBlocks(defaultLockBlocks * 2n)
     // @ts-ignore
-    await token.connect(tester).approve(registratorAddress, lockAmount2)
+    await token.connect(tester).approve(registratorAddress, lockAmount)
     // @ts-ignore
-    await registrator.connect(tester).lock(lockAmount2)
+    await registrator.connect(tester).lock()
     // @ts-ignore
     await registrator.connect(operator).setLockBlocks(defaultLockBlocks * 3n)
     // @ts-ignore
-    await token.connect(tester).approve(registratorAddress, lockAmount3)
+    await token.connect(tester).approve(registratorAddress, lockAmount)
     // @ts-ignore
-    await registrator.connect(tester).lock(lockAmount3)
+    await registrator.connect(tester).lock()
 
     for (let i = 0; i < defaultLockBlocks * 2n; i++) {
       await network.provider.send("evm_mine")
     }
     
     // @ts-ignore
-    await registrator.connect(tester).unlock(lockAmount1 + (lockAmount2 / 2n))
+    await registrator.connect(tester).unlock(lockAmount + (lockAmount / 2n))
 
-    expect(await token.balanceOf(tester.address)).to.equal(lockAmount1 + (lockAmount2 / 2n))
+    expect(await token.balanceOf(tester.address)).to.equal(lockAmount + (lockAmount / 2n))
     
     const data = await registrator.getLock(tester.address)
     
-    expect(data[0][0]).to.equal(lockAmount2 / 2n)
+    expect(data[0][0]).to.equal(lockAmount / 2n)
   })
 
   it('Allows setting penalties per address', async () => {
@@ -254,7 +260,7 @@ describe("Registrator contract", function () {
     const preData = await registrator.getLock(tester.address)
     expect(preData[0].length).to.equal(0)
 
-    const lockAmount = 1n * BigInt(1e18)
+    const lockAmount = defaultLockSize
 
     // @ts-ignore
     await token.connect(admin).transfer(tester.address, lockAmount)
@@ -262,7 +268,7 @@ describe("Registrator contract", function () {
     // @ts-ignore
     await token.connect(tester).approve(registratorAddress, lockAmount)
     // @ts-ignore
-    await registrator.connect(tester).lock(lockAmount)
+    await registrator.connect(tester).lock()
     
     for (let i = 0; i < defaultLockBlocks; i++) {
       await network.provider.send("evm_mine")
