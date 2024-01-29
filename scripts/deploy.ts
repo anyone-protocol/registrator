@@ -40,10 +40,11 @@ async function main() {
   const Contract = await ethers.getContractFactory('Registrator', deployer)
 
   const defaultBlockLock = 5n * 60n * 24n * 180n // 12s per block, 180 days
+  const defaultLockSize = 100n * BigInt(1e18);
   
   const instance = await upgrades.deployProxy(
     Contract,
-    [ atorContractAddress, operatorAddress, defaultBlockLock ]
+    [ atorContractAddress, operatorAddress, defaultBlockLock, defaultLockSize ]
   )
   await instance.waitForDeployment()
   const proxyContractAddress = await instance.getAddress()
