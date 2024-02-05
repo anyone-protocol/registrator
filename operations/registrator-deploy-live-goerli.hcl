@@ -11,7 +11,7 @@ job "registrator-deploy-live-goerli" {
 
         config {
             network_mode = "host"
-            image = "ghcr.io/ator-development/registrator:0.1.2"
+            image = "ghcr.io/ator-development/registrator:0.2.0"
             entrypoint = ["npx"]
             command = "hardhat"
             args = ["run", "--network", "goerli", "scripts/deploy.ts"]
