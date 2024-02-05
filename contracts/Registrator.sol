@@ -20,60 +20,57 @@ contract Registrator is Initializable, PausableUpgradeable, AccessControlUpgrade
 
     IERC20 public tokenContract;
 
-    struct LockData {
-        uint256[] amount;
-        uint256[] unlockAt;
-        address[] unlockTo;
+    struct Data {
+        uint256 amount;
+        uint256 unlockAt;
+        address unlockTo;
+    }
+    struct Registration {
+        uint256 penalty;
+        Data[] data;
     }
 
-    mapping(address => LockData) locks;
-    mapping(address => uint256) public penalties;
+    mapping(address => Registration) registrations;
 
-    event LockRegistered(address indexed _account);
+    event Registered(address indexed _account);
 
-    function getLock(address _address) public view returns (LockData memory) {
-        return locks[_address];
+    function getRegistration(address _address) public view returns (Registration memory) {
+        return registrations[_address];
     }
 
-    function lock() external whenNotPaused {
+    function register(address _address) external whenNotPaused {
         require(tokenContract.transferFrom(msg.sender, address(this), currentLockSize));
-        locks[msg.sender].amount.push(currentLockSize);
-        locks[msg.sender].unlockAt.push(block.number + lockBlocks);
-        locks[msg.sender].unlockTo.push(msg.sender);
-        emit LockRegistered(msg.sender);
+        
+        registrations[_address].data.push(Data(currentLockSize, block.number + lockBlocks, msg.sender));
+        
+        emit Registered(_address);
     }
 
-    function lockFor(address _address) external whenNotPaused {
-        require(tokenContract.transferFrom(msg.sender, address(this), currentLockSize));
-        locks[_address].amount.push(currentLockSize);
-        locks[_address].unlockAt.push(block.number + lockBlocks);
-        locks[_address].unlockTo.push(msg.sender);
-        emit LockRegistered(_address);
-    }
-
-    function unlock(address _address, uint256 _upto) external whenNotPaused {
+    function unregister(address _address, uint256 _upto) external whenNotPaused {
         require(_upto > 0, "UpTo parameter must be greater than 0");
     
         uint256 requested = _upto;
         uint256 unlocked = 0;
         uint consumedSize = 0;
-        uint[] memory consumed = new uint[](locks[_address].amount.length);
-        for (uint i = 0; i < locks[_address].amount.length; i++) {
-            if ((locks[_address].unlockAt[i] < block.number) && (locks[_address].unlockTo[i] == msg.sender)) {
+        uint[] memory consumed = new uint[](registrations[_address].data.length);
+        for (uint i = 0; i < registrations[_address].data.length; i++) {
+
+            if ((registrations[_address].data[i].unlockAt < block.number) && (registrations[_address].data[i].unlockTo == msg.sender)) {
                 if (requested > 0) {
-                    if (locks[_address].amount[i] > requested) {
-                        locks[_address].amount[i] -= requested;
+                    if (registrations[_address].data[i].amount > requested) {
+                        registrations[_address].data[i].amount -= requested;
                         unlocked += requested;
                         requested = 0;
                     } else {
-                        requested -= locks[_address].amount[i];
-                        unlocked += locks[_address].amount[i];
+                        requested -= registrations[_address].data[i].amount;
+                        unlocked += registrations[_address].data[i].amount;
 
                         consumed[consumedSize] = i;
                         consumedSize++;
                     }
                 }
             }
+
         }
 
         require(unlocked > 0, "No unlockables found");
@@ -81,38 +78,29 @@ contract Registrator is Initializable, PausableUpgradeable, AccessControlUpgrade
         require(tokenContract.balanceOf(address(this)) >= unlocked, "Insufficient contract token balance");
         require(tokenContract.transfer(msg.sender, unlocked), "Token transfer failed");
 
-        require(locks[_address].amount.length == locks[_address].unlockAt.length, "Data consistency failure 1");
-        require(locks[_address].amount.length == locks[_address].unlockTo.length, "Data consistency failure 2");
-
         uint removed = 0;
         for (uint i = 0; i < consumedSize; i++) {
             uint adjustedIndex = consumed[i] - removed;
-            require(adjustedIndex < locks[_address].amount.length, "Index out of bounds of amount");
-            require(adjustedIndex < locks[_address].unlockAt.length, "Index out of bounds of unlockAt");
-            require(adjustedIndex < locks[_address].unlockTo.length, "Index out of bounds of unlockTo");
+            require(adjustedIndex < registrations[_address].data.length, "Index out of bounds");
 
-            for (uint j = adjustedIndex; j < locks[_address].amount.length - 1; j++) {
-                locks[_address].amount[j] = locks[_address].amount[j + 1];
-                locks[_address].unlockAt[j] = locks[_address].unlockAt[j + 1];
-                locks[_address].unlockTo[j] = locks[_address].unlockTo[j + 1];
+            for (uint j = adjustedIndex; j < registrations[_address].data.length - 1; j++) {
+                registrations[_address].data[j] = registrations[_address].data[j + 1];
             }
-            locks[_address].amount.pop();
-            locks[_address].unlockAt.pop();
-            locks[_address].unlockTo.pop();
+            registrations[_address].data.pop();
             removed++;
         }
 
-        if (locks[_address].amount.length == 0) {
-            delete locks[_address];
+        if (registrations[_address].data.length == 0) {
+            delete registrations[_address];
         }
     }
 
-    function setPenalty(address _account, uint256 _value)
+    function setPenalty(address _address, uint256 _value)
         external 
         whenNotPaused 
         onlyRole(OPERATOR_ROLE)
     {
-        penalties[_account] = _value;
+        registrations[_address].penalty = _value;
     }
 
     function setLockSize(uint256 _value)

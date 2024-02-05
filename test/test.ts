@@ -51,13 +51,13 @@ describe("Registrator contract", function () {
     // @ts-ignore
     await token.connect(tester).approve(registratorAddress, lockAmount)
     // @ts-ignore
-    const result = await registrator.connect(tester).lock()
+    const result = await registrator.connect(tester).register(tester.address)
     
     expect(await token.balanceOf(registratorAddress)).to.equal(lockAmount)
     expect(await token.balanceOf(tester.address)).to.equal(lockAmount)
 
-    const data = await registrator.getLock(tester.address)
-    expect(data[0][0]).to.equal(lockAmount)
+    const data = await registrator.getRegistration(tester.address)
+    expect(data.data[0].amount).to.equal(lockAmount)
   })
   
   it('Allows locking tokens for a specific address', async () => {
@@ -71,13 +71,13 @@ describe("Registrator contract", function () {
     // @ts-ignore
     await token.connect(tester).approve(registratorAddress, lockAmount)
     // @ts-ignore
-    const result = await registrator.connect(tester).lockFor(receiver.address)
+    const result = await registrator.connect(tester).register(receiver.address)
     
     expect(await token.balanceOf(registratorAddress)).to.equal(lockAmount)
     expect(await token.balanceOf(tester.address)).to.equal(lockAmount)
 
-    const data = await registrator.getLock(receiver.address)
-    expect(data[0][0]).to.equal(lockAmount)
+    const data = await registrator.getRegistration(receiver.address)
+    expect(data.data[0].amount).to.equal(lockAmount)
   })
 
   it('Allows setting only non-zero lock lengths', async () => {
@@ -113,13 +113,13 @@ describe("Registrator contract", function () {
     // @ts-ignore
     await token.connect(tester).approve(registratorAddress, lockAmount)
     // @ts-ignore
-    const result = await registrator.connect(tester).lock()
+    const result = await registrator.connect(tester).register(tester.address)
 
-    const data = await registrator.getLock(tester.address)
-    expect(data[0][0]).to.equal(lockAmount)
+    const data = await registrator.getRegistration(tester.address)
+    expect(data.data[0].amount).to.equal(lockAmount)
 
     // @ts-ignore
-    await expect(registrator.connect(tester).unlock(tester.address, lockAmount)).to.be.revertedWith("No unlockables found")
+    await expect(registrator.connect(tester).unregister(tester.address, lockAmount)).to.be.revertedWith("No unlockables found")
 
   })
 
@@ -134,7 +134,7 @@ describe("Registrator contract", function () {
     // @ts-ignore
     await token.connect(tester).approve(registratorAddress, lockAmount)
     // @ts-ignore
-    const result = await registrator.connect(tester).lock()
+    const result = await registrator.connect(tester).register(tester.address)
     expect(await token.balanceOf(tester.address)).to.equal(0)
 
     for (let i = 0; i < defaultLockBlocks; i++) {
@@ -142,7 +142,7 @@ describe("Registrator contract", function () {
     }
     
     // @ts-ignore
-    await registrator.connect(tester).unlock(tester.address, lockAmount)
+    await registrator.connect(tester).unregister(tester.address, lockAmount)
     expect(await token.balanceOf(tester.address)).to.equal(lockAmount)
   })
 
@@ -158,31 +158,31 @@ describe("Registrator contract", function () {
     // @ts-ignore
     await token.connect(tester).approve(registratorAddress, lockAmount)
     // @ts-ignore
-    await registrator.connect(tester).lock()
+    await registrator.connect(tester).register(tester.address)
     // @ts-ignore
     await registrator.connect(operator).setLockBlocks(defaultLockBlocks * 2n)
     // @ts-ignore
     await token.connect(tester).approve(registratorAddress, lockAmount)
     // @ts-ignore
-    await registrator.connect(tester).lock()
+    await registrator.connect(tester).register(tester.address)
     // @ts-ignore
     await registrator.connect(operator).setLockBlocks(defaultLockBlocks * 3n)
     // @ts-ignore
     await token.connect(tester).approve(registratorAddress, lockAmount)
     // @ts-ignore
-    await registrator.connect(tester).lock()
+    await registrator.connect(tester).register(tester.address)
     // @ts-ignore
     await registrator.connect(operator).setLockBlocks(defaultLockBlocks * 4n)
     // @ts-ignore
     await token.connect(tester).approve(registratorAddress, lockAmount)
     // @ts-ignore
-    await registrator.connect(tester).lock()
+    await registrator.connect(tester).register(tester.address)
     // @ts-ignore
     await registrator.connect(operator).setLockBlocks(defaultLockBlocks * 5n)
     // @ts-ignore
     await token.connect(tester).approve(registratorAddress, lockAmount)
     // @ts-ignore
-    await registrator.connect(tester).lock()
+    await registrator.connect(tester).register(tester.address)
 
 
     for (let i = 0; i < defaultLockBlocks * 3n; i++) {
@@ -190,13 +190,13 @@ describe("Registrator contract", function () {
     }
     
     // @ts-ignore
-    await registrator.connect(tester).unlock(tester.address, lockAmount * 5n)
+    await registrator.connect(tester).unregister(tester.address, lockAmount * 5n)
 
     expect(await token.balanceOf(tester.address)).to.equal(lockAmount * 3n)
     
-    const data = await registrator.getLock(tester.address)
+    const data = await registrator.getRegistration(tester.address)
     
-    expect(data[0][0]).to.equal(lockAmount)
+    expect(data.data[0].amount).to.equal(lockAmount)
   })
 
   it('Unlocks partial amount of tokens among multiple locks', async () => {
@@ -211,54 +211,54 @@ describe("Registrator contract", function () {
     // @ts-ignore
     await token.connect(tester).approve(registratorAddress, lockAmount)
     // @ts-ignore
-    await registrator.connect(tester).lock()
+    await registrator.connect(tester).register(tester.address)
     // @ts-ignore
     await registrator.connect(operator).setLockBlocks(defaultLockBlocks * 2n)
     // @ts-ignore
     await token.connect(tester).approve(registratorAddress, lockAmount)
     // @ts-ignore
-    await registrator.connect(tester).lock()
+    await registrator.connect(tester).register(tester.address)
     // @ts-ignore
     await registrator.connect(operator).setLockBlocks(defaultLockBlocks * 3n)
     // @ts-ignore
     await token.connect(tester).approve(registratorAddress, lockAmount)
     // @ts-ignore
-    await registrator.connect(tester).lock()
+    await registrator.connect(tester).register(tester.address)
 
     for (let i = 0; i < defaultLockBlocks * 2n; i++) {
       await network.provider.send("evm_mine")
     }
     
     // @ts-ignore
-    await registrator.connect(tester).unlock(tester.address, lockAmount + (lockAmount / 2n))
+    await registrator.connect(tester).unregister(tester.address, lockAmount + (lockAmount / 2n))
 
     expect(await token.balanceOf(tester.address)).to.equal(lockAmount + (lockAmount / 2n))
     
-    const data = await registrator.getLock(tester.address)
+    const data = await registrator.getRegistration(tester.address)
     
-    expect(data[0][0]).to.equal(lockAmount / 2n)
+    expect(data.data[0].amount).to.equal(lockAmount / 2n)
   })
 
   it('Allows setting penalties per address', async () => {
     const { registrator, operator, tester } = await loadFixture(deploy)
 
-    expect(await registrator.penalties(tester.address)).to.equal(0)
+    expect((await registrator.getRegistration(tester.address)).penalty).to.equal(0)
     // @ts-ignore
     await registrator.connect(operator).setPenalty(tester.address, 100)
     
-    expect(await registrator.penalties(tester.address)).to.equal(100)
+    expect((await registrator.getRegistration(tester.address)).penalty).to.equal(100)
     // @ts-ignore
     await registrator.connect(operator).setPenalty(tester.address, 0)
     
-    expect(await registrator.penalties(tester.address)).to.equal(0)
+    expect((await registrator.getRegistration(tester.address)).penalty).to.equal(0)
   })
 
   it('Allows locking tokens after clearing data', async () => {
     const { admin, registrator, tester, token, registratorAddress, operator } = 
       await loadFixture(deploy)
 
-    const preData = await registrator.getLock(tester.address)
-    expect(preData[0].length).to.equal(0)
+    const preData = await registrator.getRegistration(tester.address)
+    expect(preData.data.length).to.equal(0)
 
     const lockAmount = defaultLockSize
 
@@ -268,18 +268,18 @@ describe("Registrator contract", function () {
     // @ts-ignore
     await token.connect(tester).approve(registratorAddress, lockAmount)
     // @ts-ignore
-    await registrator.connect(tester).lock()
+    await registrator.connect(tester).register(tester.address)
     
     for (let i = 0; i < defaultLockBlocks; i++) {
       await network.provider.send("evm_mine")
     }
     
     // @ts-ignore
-    await registrator.connect(tester).unlock(tester.address, lockAmount)
+    await registrator.connect(tester).unregister(tester.address, lockAmount)
 
     expect(await token.balanceOf(tester.address)).to.equal(lockAmount)
     
-    const postData = await registrator.getLock(tester.address)
-    expect(postData[0].length).to.equal(0)
+    const postData = await registrator.getRegistration(tester.address)
+    expect(postData.data.length).to.equal(0)
   })
 });
