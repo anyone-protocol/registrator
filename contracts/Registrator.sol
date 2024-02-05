@@ -23,6 +23,7 @@ contract Registrator is Initializable, PausableUpgradeable, AccessControlUpgrade
     struct LockData {
         uint256[] amount;
         uint256[] unlockAt;
+        address[] unlockTo;
     }
 
     mapping(address => LockData) locks;
@@ -38,6 +39,7 @@ contract Registrator is Initializable, PausableUpgradeable, AccessControlUpgrade
         require(tokenContract.transferFrom(msg.sender, address(this), currentLockSize));
         locks[msg.sender].amount.push(currentLockSize);
         locks[msg.sender].unlockAt.push(block.number + lockBlocks);
+        locks[msg.sender].unlockTo.push(msg.sender);
         emit LockRegistered(msg.sender);
     }
 
@@ -45,26 +47,28 @@ contract Registrator is Initializable, PausableUpgradeable, AccessControlUpgrade
         require(tokenContract.transferFrom(msg.sender, address(this), currentLockSize));
         locks[_address].amount.push(currentLockSize);
         locks[_address].unlockAt.push(block.number + lockBlocks);
+        locks[_address].unlockTo.push(msg.sender);
         emit LockRegistered(_address);
     }
 
-    function unlock(uint256 _upto) external whenNotPaused {
+    function unlock(address _address, uint256 _upto) external whenNotPaused {
         require(_upto > 0, "UpTo parameter must be greater than 0");
     
         uint256 requested = _upto;
         uint256 unlocked = 0;
         uint consumedSize = 0;
-        uint[] memory consumed = new uint[](locks[msg.sender].amount.length);
-        for (uint i = 0; i < locks[msg.sender].amount.length; i++) {
-            if (locks[msg.sender].unlockAt[i] < block.number) {
+        uint[] memory consumed = new uint[](locks[_address].amount.length);
+        for (uint i = 0; i < locks[_address].amount.length; i++) {
+            if ((locks[_address].unlockAt[i] < block.number) && (locks[_address].unlockTo[i] == msg.sender)) {
                 if (requested > 0) {
-                    if (locks[msg.sender].amount[i] > requested) {
-                        locks[msg.sender].amount[i] -= requested;
+                    if (locks[_address].amount[i] > requested) {
+                        locks[_address].amount[i] -= requested;
                         unlocked += requested;
                         requested = 0;
                     } else {
-                        requested -= locks[msg.sender].amount[i];
-                        unlocked += locks[msg.sender].amount[i];
+                        requested -= locks[_address].amount[i];
+                        unlocked += locks[_address].amount[i];
+
                         consumed[consumedSize] = i;
                         consumedSize++;
                     }
@@ -73,26 +77,33 @@ contract Registrator is Initializable, PausableUpgradeable, AccessControlUpgrade
         }
 
         require(unlocked > 0, "No unlockables found");
+        
         require(tokenContract.balanceOf(address(this)) >= unlocked, "Insufficient contract token balance");
         require(tokenContract.transfer(msg.sender, unlocked), "Token transfer failed");
 
-        require(locks[msg.sender].amount.length == locks[msg.sender].unlockAt.length, "Data consistency failure");
+        require(locks[_address].amount.length == locks[_address].unlockAt.length, "Data consistency failure 1");
+        require(locks[_address].amount.length == locks[_address].unlockTo.length, "Data consistency failure 2");
+
         uint removed = 0;
         for (uint i = 0; i < consumedSize; i++) {
             uint adjustedIndex = consumed[i] - removed;
-            require(adjustedIndex < locks[msg.sender].amount.length, "Index out of bounds");
-            require(adjustedIndex < locks[msg.sender].unlockAt.length, "Index out of bounds");
-            for (uint j = adjustedIndex; j < locks[msg.sender].amount.length - 1; j++) {
-                locks[msg.sender].amount[j] = locks[msg.sender].amount[j + 1];
-                locks[msg.sender].unlockAt[j] = locks[msg.sender].amount[j + 1];
+            require(adjustedIndex < locks[_address].amount.length, "Index out of bounds of amount");
+            require(adjustedIndex < locks[_address].unlockAt.length, "Index out of bounds of unlockAt");
+            require(adjustedIndex < locks[_address].unlockTo.length, "Index out of bounds of unlockTo");
+
+            for (uint j = adjustedIndex; j < locks[_address].amount.length - 1; j++) {
+                locks[_address].amount[j] = locks[_address].amount[j + 1];
+                locks[_address].unlockAt[j] = locks[_address].unlockAt[j + 1];
+                locks[_address].unlockTo[j] = locks[_address].unlockTo[j + 1];
             }
-            locks[msg.sender].amount.pop();
-            locks[msg.sender].unlockAt.pop();
+            locks[_address].amount.pop();
+            locks[_address].unlockAt.pop();
+            locks[_address].unlockTo.pop();
             removed++;
         }
 
-        if (locks[msg.sender].amount.length == 0) {
-            delete locks[msg.sender];
+        if (locks[_address].amount.length == 0) {
+            delete locks[_address];
         }
     }
 

@@ -119,7 +119,7 @@ describe("Registrator contract", function () {
     expect(data[0][0]).to.equal(lockAmount)
 
     // @ts-ignore
-    await expect(registrator.connect(tester).unlock(lockAmount)).to.be.revertedWith("No unlockables found")
+    await expect(registrator.connect(tester).unlock(tester.address, lockAmount)).to.be.revertedWith("No unlockables found")
 
   })
 
@@ -142,7 +142,7 @@ describe("Registrator contract", function () {
     }
     
     // @ts-ignore
-    await registrator.connect(tester).unlock(lockAmount)
+    await registrator.connect(tester).unlock(tester.address, lockAmount)
     expect(await token.balanceOf(tester.address)).to.equal(lockAmount)
   })
 
@@ -190,7 +190,7 @@ describe("Registrator contract", function () {
     }
     
     // @ts-ignore
-    await registrator.connect(tester).unlock(lockAmount * 5n)
+    await registrator.connect(tester).unlock(tester.address, lockAmount * 5n)
 
     expect(await token.balanceOf(tester.address)).to.equal(lockAmount * 3n)
     
@@ -230,7 +230,7 @@ describe("Registrator contract", function () {
     }
     
     // @ts-ignore
-    await registrator.connect(tester).unlock(lockAmount + (lockAmount / 2n))
+    await registrator.connect(tester).unlock(tester.address, lockAmount + (lockAmount / 2n))
 
     expect(await token.balanceOf(tester.address)).to.equal(lockAmount + (lockAmount / 2n))
     
@@ -275,7 +275,7 @@ describe("Registrator contract", function () {
     }
     
     // @ts-ignore
-    await registrator.connect(tester).unlock(lockAmount)
+    await registrator.connect(tester).unlock(tester.address, lockAmount)
 
     expect(await token.balanceOf(tester.address)).to.equal(lockAmount)
     
