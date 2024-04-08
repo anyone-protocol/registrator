@@ -55,7 +55,7 @@ async function main() {
   // console.log(`Contract deployed to ${result.address}`)
 
   if (process.env.PHASE !== undefined && process.env.CONSUL_IP !== undefined) {
-    const consulKey = process.env.REGISTRATOR_CONSUL_KEY || 'registrator-goerli/test-deploy'
+    const consulKey = process.env.REGISTRATOR_CONSUL_KEY || 'registrator/sepolia/test-deploy'
 
     const updateResult = await consul.kv.set({
       key: consulKey,
