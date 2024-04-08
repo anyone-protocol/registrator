@@ -22,7 +22,7 @@ async function main() {
 
   console.log(`Deploying registrator with ator contract: ${atorContractAddress}`)
 
-  const deployerPrivateKey = process.env.DEPLOYER_PRIVATE_KEY
+  const deployerPrivateKey = process.env.REGISTRATOR_DEPLOYER_KEY
   const [ owner ] = await ethers.getSigners()
 
   const deployer = deployerPrivateKey

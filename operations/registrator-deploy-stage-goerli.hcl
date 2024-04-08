@@ -1,4 +1,4 @@
-job "registrator-deploy-stage-goerli" {
+job "registrator-deploy-stage-sepolia" {
     datacenters = ["ator-fin"]
     type = "batch"
 
@@ -11,20 +11,20 @@ job "registrator-deploy-stage-goerli" {
 
         config {
             network_mode = "host"
-            image = "ghcr.io/ator-development/registrator:0.2.0"
+            image = "ghcr.io/ator-development/registrator:0.2.1"
             entrypoint = ["npx"]
             command = "hardhat"
-            args = ["run", "--network", "goerli", "scripts/deploy.ts"]
+            args = ["run", "--network", "sepolia", "scripts/deploy.ts"]
         }
 
         vault {
-            policies = ["registrator-stage-goerli"]
+            policies = ["registrator-stage-sepolia"]
         }
 
         template {
             data = <<EOH
-            {{with secret "kv/registrator/goerli/stage"}}
-                DEPLOYER_PRIVATE_KEY="{{.Data.data.DEPLOYER_PRIVATE_KEY}}"
+            {{with secret "kv/registrator/sepolia/stage"}}
+                REGISTRATOR_DEPLOYER_KEY="{{.Data.data.REGISTRATOR_DEPLOYER_KEY}}"
                 CONSUL_TOKEN="{{.Data.data.CONSUL_TOKEN}}"
                 JSON_RPC="{{.Data.data.JSON_RPC}}"
                 REGISTRATOR_OPERATOR_ADDRESS="{{.Data.data.REGISTRATOR_OPERATOR_ADDRESS}}"
@@ -38,8 +38,8 @@ job "registrator-deploy-stage-goerli" {
             PHASE="stage"
             CONSUL_IP="127.0.0.1"
             CONSUL_PORT="8500"
-            REGISTRATOR_CONSUL_KEY="registrator/goerli/stage/address"
-            ATOR_TOKEN_CONSUL_KEY="ator-token/goerli/stage/address"
+            REGISTRATOR_CONSUL_KEY="registrator/sepolia/stage/address"
+            ATOR_TOKEN_CONSUL_KEY="ator-token/sepolia/stage/address"
         }
 
         restart {
