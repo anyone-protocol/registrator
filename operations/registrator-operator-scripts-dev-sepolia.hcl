@@ -11,14 +11,14 @@ job "registrator-operator-scripts-dev-sepolia" {
 
         config {
             network_mode = "host"
-            image = "ghcr.io/ator-development/registrator:0.2.1"
+            image = "ghcr.io/ator-development/registrator:0.2.2"
             entrypoint = ["npx"]
             command = "hardhat"
             args = ["run", "--network", "sepolia", "scripts/operator-scripts.ts"]
         }
 
         vault {
-            policies = ["registrator-dev-sepolia"]
+            policies = ["registrator-sepolia-dev"]
         }
 
         template {
@@ -27,7 +27,6 @@ job "registrator-operator-scripts-dev-sepolia" {
                 CONSUL_TOKEN="{{.Data.data.CONSUL_TOKEN}}"
                 JSON_RPC="{{.Data.data.JSON_RPC}}"
                 REGISTRATOR_OPERATOR_ADDRESS="{{.Data.data.REGISTRATOR_OPERATOR_ADDRESS}}"
-                REGISTRATOR_RECEIVER_ADDRESS="{{.Data.data.REGISTRATOR_RECEIVER_ADDRESS}}"
             {{end}}
             EOH
             destination = "secrets/file.env"

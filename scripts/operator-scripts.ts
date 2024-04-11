@@ -41,8 +41,6 @@ async function main() {
     const operator = new ethers.Wallet(operatorAddress, provider)
     console.log(`Operator ${operator.address}`)
 
-    // const receiverAddress = process.env.REGISTRATOR_RECEIVER_ADDRESS || '0x15d34AAf54267DB7D7c367839AAf71A00a2C6A65' // Hardhat #4
-
     const registratorContract = new ethers.Contract(registratorAddress, abi, operator.provider)
     const registrator = registratorContract.connect(operator)
 

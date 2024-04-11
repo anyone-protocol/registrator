@@ -11,14 +11,14 @@ job "registrator-deploy-live-sepolia" {
 
         config {
             network_mode = "host"
-            image = "ghcr.io/ator-development/registrator:0.2.1"
+            image = "ghcr.io/ator-development/registrator:0.2.2"
             entrypoint = ["npx"]
             command = "hardhat"
             args = ["run", "--network", "sepolia", "scripts/deploy.ts"]
         }
 
         vault {
-            policies = ["registrator-live-sepolia"]
+            policies = ["registrator-sepolia-live"]
         }
 
         template {
