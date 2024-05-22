@@ -24,6 +24,7 @@ contract Registrator is Initializable, PausableUpgradeable, AccessControlUpgrade
         uint256 amount;
         uint256 unlockAt;
         address unlockTo;
+        string fingerprint;
     }
     struct Registration {
         uint256 penalty;
@@ -32,21 +33,22 @@ contract Registrator is Initializable, PausableUpgradeable, AccessControlUpgrade
 
     mapping(address => Registration) registrations;
 
-    event Registered(address indexed _account);
+    event Registered(address indexed _account, string fingerprint);
 
     function getRegistration(address _address) public view returns (Registration memory) {
         return registrations[_address];
     }
 
-    function register(address _address) external whenNotPaused {
+    function register(address _address, string calldata fingerprint) external whenNotPaused {
         require(tokenContract.transferFrom(msg.sender, address(this), currentLockSize));
+        require(bytes(fingerprint).length <= 40, "Fingerprint must have 40 or less characters");
         
-        registrations[_address].data.push(Data(currentLockSize, block.number + lockBlocks, msg.sender));
+        registrations[_address].data.push(Data(currentLockSize, block.number + lockBlocks, msg.sender, fingerprint));
         
-        emit Registered(_address);
+        emit Registered(_address, fingerprint);
     }
 
-    function unregister(address _address, uint256 _upto) external whenNotPaused {
+    function unregister(address _address, uint256 _upto, string calldata fingerprint) external whenNotPaused {
         require(_upto > 0, "UpTo parameter must be greater than 0");
     
         uint256 requested = _upto;
@@ -55,7 +57,11 @@ contract Registrator is Initializable, PausableUpgradeable, AccessControlUpgrade
         uint[] memory consumed = new uint[](registrations[_address].data.length);
         for (uint i = 0; i < registrations[_address].data.length; i++) {
 
-            if ((registrations[_address].data[i].unlockAt < block.number) && (registrations[_address].data[i].unlockTo == msg.sender)) {
+            if ((registrations[_address].data[i].unlockAt < block.number) 
+                && (registrations[_address].data[i].unlockTo == msg.sender)
+                && (
+                    keccak256(abi.encodePacked(registrations[_address].data[i].fingerprint)) == keccak256(abi.encodePacked(fingerprint)))
+                ) {
                 if (requested > 0) {
                     if (registrations[_address].data[i].amount > requested) {
                         registrations[_address].data[i].amount -= requested;
