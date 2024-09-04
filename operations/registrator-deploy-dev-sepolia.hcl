@@ -11,7 +11,7 @@ job "registrator-deploy-dev-sepolia" {
 
         config {
             network_mode = "host"
-            image = "ghcr.io/ator-development/registrator:0.2.3"
+            image = "ghcr.io/anyone-protocol/registrator:0.2.3"
             entrypoint = ["npx"]
             command = "hardhat"
             args = ["run", "--network", "sepolia", "scripts/deploy.ts"]
